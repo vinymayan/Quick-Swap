@@ -1,4 +1,5 @@
-#include "logger.h"
+﻿#include "logger.h"
+#include "Hooks.h"
 
 void OnMessage(SKSE::MessagingInterface::Message* message) {
     if (message->type == SKSE::MessagingInterface::kDataLoaded) {
@@ -14,6 +15,7 @@ SKSEPluginLoad(const SKSE::LoadInterface *skse) {
     SetupLog();
     logger::info("Plugin loaded");
     SKSE::Init(skse);
+    NotifyAnimationGraphHook::Install();
     SKSE::GetMessagingInterface()->RegisterListener(OnMessage);
     return true;
 }
