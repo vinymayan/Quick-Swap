@@ -1,6 +1,7 @@
 ﻿#include <unordered_set>
 #include <vector>
 #include <string>
+#include "Settings.h"
 
 
 struct BSFixedStringHash {
@@ -54,13 +55,13 @@ private:
     {
         if (auto* actor = skyrim_cast<RE::Actor*>(a_this)) {
             if (actor && (actor->IsPlayer() || actor->IsPlayerRef())) {
-                if (a_eventName == "WeapOutRightReplaceForceEquip") {
+                if (a_eventName == "WeapOutRightReplaceForceEquip" && Settings::IsQuickSwapAllowed(actor)) {
                     if (auto* actorState = actor->AsActorState()) {
                         actorState->actorState2.weaponState = RE::WEAPON_STATE::kDrawn;
                     }
                     actor->OnItemEquipped(false);
                     MoveWeaponToHand(actor);
-                    suppressNextPlayerAttackStop = true;
+                    suppressNextPlayerAttackStop = Settings::IsNonCancelAttackAllowed(actor);
                     return false;
                 }
                 else if (a_eventName == "attackStop" && suppressNextPlayerAttackStop) {
@@ -77,13 +78,13 @@ private:
     {
         if (auto* actor = skyrim_cast<RE::Actor*>(a_this)) {
             if (actor && (actor->IsPlayer() || actor->IsPlayerRef())) {
-                if (a_eventName == "WeapOutRightReplaceForceEquip") {
+                if (a_eventName == "WeapOutRightReplaceForceEquip" && Settings::IsQuickSwapAllowed(actor)) {
                     if (auto* actorState = actor->AsActorState()) {
                         actorState->actorState2.weaponState = RE::WEAPON_STATE::kDrawn;
                     }
                     actor->OnItemEquipped(false);
                     MoveWeaponToHand(actor);
-                    suppressNextPlayerAttackStop = true;
+                    suppressNextPlayerAttackStop = Settings::IsNonCancelAttackAllowed(actor);
                     return false;
                 }
                 else if (a_eventName == "attackStop" && suppressNextPlayerAttackStop) {
@@ -100,13 +101,13 @@ private:
     {
         if (auto* actor = skyrim_cast<RE::Actor*>(a_this)) {
             if (actor && (actor->IsPlayer() || actor->IsPlayerRef())) {
-                if (a_eventName == "WeapOutRightReplaceForceEquip") {
+                if (a_eventName == "WeapOutRightReplaceForceEquip" && Settings::IsQuickSwapAllowed(actor)) {
                     if (auto* actorState = actor->AsActorState()) {
                         actorState->actorState2.weaponState = RE::WEAPON_STATE::kDrawn;
                     }
                     actor->OnItemEquipped(false);
                     MoveWeaponToHand(actor);
-                    suppressNextPlayerAttackStop = true;
+                    suppressNextPlayerAttackStop = Settings::IsNonCancelAttackAllowed(actor);
                     return false;
                 }
                 else if (a_eventName == "attackStop" && suppressNextPlayerAttackStop) {
