@@ -71,6 +71,10 @@ void Manager::PopulateAllLists() {
     _readyCallbacks.clear();
 }
 
+bool Manager::IsPopulated() const {
+    return _isPopulated;
+}
+
 const std::vector<InternalFormInfo>& Manager::GetList(const std::string& typeName) {
     static std::vector<InternalFormInfo> empty;
     auto it = _dataStore.find(typeName);

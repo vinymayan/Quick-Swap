@@ -8,14 +8,54 @@
 
 #include <filesystem>
 #include <fstream>
+#include <map>
 #include <sstream>
 
 namespace ImGui = ImGuiMCP;
 
-
 namespace
 {
-    constexpr const char* SETTINGS_PATH = "Data/SKSE/Plugins/QuickSwap/Settings.json";
+    constexpr const char* MOD_DIR = "Data/Viny Mods/Quick Swap";
+    constexpr const char* SETTINGS_PATH = "Data/Viny Mods/Quick Swap/Settings.json";
+    constexpr const char* LANG_PATH = "Data/Viny Mods/Quick Swap/Language.json";
+
+    std::map<std::string, std::string> g_language;
+
+    std::string ReadTextFile(const char* a_path)
+    {
+        std::ifstream file(a_path, std::ios::binary);
+        if (!file.is_open()) {
+            return {};
+        }
+
+        std::stringstream buffer;
+        buffer << file.rdbuf();
+
+        auto text = buffer.str();
+        if (text.size() >= 3 && static_cast<unsigned char>(text[0]) == 0xEF &&
+            static_cast<unsigned char>(text[1]) == 0xBB &&
+            static_cast<unsigned char>(text[2]) == 0xBF) {
+            text.erase(0, 3);
+        }
+
+        return text;
+    }
+
+    void FlattenLanguageNode(const rapidjson::Value& a_value, const std::string& a_prefix)
+    {
+        if (!a_value.IsObject()) {
+            return;
+        }
+
+        for (auto itr = a_value.MemberBegin(); itr != a_value.MemberEnd(); ++itr) {
+            const std::string key = a_prefix.empty() ? itr->name.GetString() : a_prefix + "." + itr->name.GetString();
+            if (itr->value.IsString()) {
+                g_language[key] = itr->value.GetString();
+            } else if (itr->value.IsObject()) {
+                FlattenLanguageNode(itr->value, key);
+            }
+        }
+    }
 
     bool ReadBool(const rapidjson::Value& a_doc, const char* a_key, bool a_default)
     {
@@ -90,7 +130,7 @@ namespace
 
         std::vector<const char*> items;
         items.reserve(perks.size() + 1);
-        items.push_back("None");
+        items.push_back(Settings::GetLoc("common.none", "None"));
 
         for (std::size_t i = 0; i < perks.size(); ++i) {
             items.push_back(perks[i].cachedDisplayName.c_str());
@@ -106,26 +146,24 @@ namespace
 
         return changed;
     }
+
+    void EnsureMenuListsPopulated()
+    {
+        auto* manager = Manager::GetSingleton();
+        if (!manager->IsPopulated()) {
+            manager->PopulateAllLists();
+        }
+    }
 }
 
 namespace Settings
 {
     void LoadSettings()
     {
-        std::ifstream file(SETTINGS_PATH, std::ios::binary);
-        if (!file.is_open()) {
+        auto json = ReadTextFile(SETTINGS_PATH);
+        if (json.empty()) {
             SaveSettings();
             return;
-        }
-
-        std::stringstream buffer;
-        buffer << file.rdbuf();
-
-        auto json = buffer.str();
-        if (json.size() >= 3 && static_cast<unsigned char>(json[0]) == 0xEF &&
-            static_cast<unsigned char>(json[1]) == 0xBB &&
-            static_cast<unsigned char>(json[2]) == 0xBF) {
-            json.erase(0, 3);
         }
 
         rapidjson::Document doc;
@@ -143,7 +181,7 @@ namespace Settings
 
     void SaveSettings()
     {
-        std::filesystem::create_directories(std::filesystem::path(SETTINGS_PATH).parent_path());
+        std::filesystem::create_directories(MOD_DIR);
 
         rapidjson::Document doc;
         doc.SetObject();
@@ -164,6 +202,35 @@ namespace Settings
         }
     }
 
+    void LoadLanguage()
+    {
+        g_language.clear();
+
+        auto json = ReadTextFile(LANG_PATH);
+        if (json.empty()) {
+            return;
+        }
+
+        rapidjson::Document doc;
+        doc.Parse(json.c_str());
+        if (doc.HasParseError() || !doc.IsObject()) {
+            SKSE::log::warn("[QuickSwap] Failed to parse language file. Using fallback text.");
+            return;
+        }
+
+        FlattenLanguageNode(doc, {});
+    }
+
+    const char* GetLoc(const char* a_key, const char* a_fallback)
+    {
+        const auto it = g_language.find(a_key);
+        if (it != g_language.end()) {
+            return it->second.c_str();
+        }
+
+        return a_fallback;
+    }
+
     bool IsQuickSwapAllowed(RE::Actor* a_actor)
     {
         return EnableQuickSwap && PlayerHasPerk(a_actor, QuickSwapPerk);
@@ -179,16 +246,24 @@ namespace QuickSwapMenu
 {
     void Render()
     {
+        EnsureMenuListsPopulated();
+
         bool changed = false;
 
-        ImGui::Text("Quick Swap");
-        changed |= ImGui::Checkbox("Enable Quick Swap", &Settings::EnableQuickSwap);
-        changed |= DrawPerkDropdown("Quick Swap locked behind perk", Settings::QuickSwapPerk);
+        ImGui::Text("%s", Settings::GetLoc("menu.quick_swap_header", "Quick Swap"));
+        changed |= ImGui::Checkbox(Settings::GetLoc("menu.enable_quick_swap", "Enable Quick Swap"), &Settings::EnableQuickSwap);
+        changed |= DrawPerkDropdown(
+            Settings::GetLoc("menu.quick_swap_perk", "Quick Swap locked behind perk"),
+            Settings::QuickSwapPerk);
 
         ImGui::Separator();
-        ImGui::Text("Non Cancel Attack");
-        changed |= ImGui::Checkbox("Enable Non Cancel Attack", &Settings::EnableNonCancelAttack);
-        changed |= DrawPerkDropdown("Non Cancel Attack locked behind perk", Settings::NonCancelAttackPerk);
+        ImGui::Text("%s", Settings::GetLoc("menu.non_cancel_attack_header", "Non Cancel Attack"));
+        changed |= ImGui::Checkbox(
+            Settings::GetLoc("menu.enable_non_cancel_attack", "Enable Non Cancel Attack"),
+            &Settings::EnableNonCancelAttack);
+        changed |= DrawPerkDropdown(
+            Settings::GetLoc("menu.non_cancel_attack_perk", "Non Cancel Attack locked behind perk"),
+            Settings::NonCancelAttackPerk);
 
         if (changed) {
             Settings::SaveSettings();
@@ -197,6 +272,7 @@ namespace QuickSwapMenu
 
     void Register()
     {
+        Settings::LoadLanguage();
         Settings::LoadSettings();
 
         if (SKSEMenuFramework::IsInstalled()) {

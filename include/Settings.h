@@ -9,6 +9,8 @@ namespace Settings
 
     void LoadSettings();
     void SaveSettings();
+    void LoadLanguage();
+    const char* GetLoc(const char* a_key, const char* a_fallback);
 
     bool IsQuickSwapAllowed(RE::Actor* a_actor);
     bool IsNonCancelAttackAllowed(RE::Actor* a_actor);

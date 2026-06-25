@@ -51,14 +51,26 @@ private:
         }
     }
 
+    static bool MagicEquip(RE::Actor* a_actor)
+    {
+        if (!a_actor) {
+            return false;
+        }
+
+        return IsMagicEquippedObject(a_actor->GetEquippedObject(false)) ||
+            IsMagicEquippedObject(a_actor->GetEquippedObject(true));
+    }
+
+    static bool IsMagicEquippedObject(RE::TESForm* a_form)
+    {
+        return a_form && a_form->GetFormType() == RE::FormType::Spell;
+    }
+
     static bool NotifyAnimationGraph_REFR(RE::IAnimationGraphManagerHolder* a_this, const RE::BSFixedString& a_eventName)
     {
         if (auto* actor = skyrim_cast<RE::Actor*>(a_this)) {
             if (actor && (actor->IsPlayer() || actor->IsPlayerRef())) {
-                if (a_eventName == "WeapOutRightReplaceForceEquip" && Settings::IsQuickSwapAllowed(actor)) {
-                    if (auto* actorState = actor->AsActorState()) {
-                        actorState->actorState2.weaponState = RE::WEAPON_STATE::kDrawn;
-                    }
+                if (a_eventName == "WeapOutRightReplaceForceEquip" && Settings::IsQuickSwapAllowed(actor) && !MagicEquip(actor)) {
                     actor->OnItemEquipped(false);
                     MoveWeaponToHand(actor);
                     suppressNextPlayerAttackStop = Settings::IsNonCancelAttackAllowed(actor);
@@ -78,10 +90,7 @@ private:
     {
         if (auto* actor = skyrim_cast<RE::Actor*>(a_this)) {
             if (actor && (actor->IsPlayer() || actor->IsPlayerRef())) {
-                if (a_eventName == "WeapOutRightReplaceForceEquip" && Settings::IsQuickSwapAllowed(actor)) {
-                    if (auto* actorState = actor->AsActorState()) {
-                        actorState->actorState2.weaponState = RE::WEAPON_STATE::kDrawn;
-                    }
+                if (a_eventName == "WeapOutRightReplaceForceEquip" && Settings::IsQuickSwapAllowed(actor) && !MagicEquip(actor)) {
                     actor->OnItemEquipped(false);
                     MoveWeaponToHand(actor);
                     suppressNextPlayerAttackStop = Settings::IsNonCancelAttackAllowed(actor);
@@ -101,10 +110,8 @@ private:
     {
         if (auto* actor = skyrim_cast<RE::Actor*>(a_this)) {
             if (actor && (actor->IsPlayer() || actor->IsPlayerRef())) {
-                if (a_eventName == "WeapOutRightReplaceForceEquip" && Settings::IsQuickSwapAllowed(actor)) {
-                    if (auto* actorState = actor->AsActorState()) {
-                        actorState->actorState2.weaponState = RE::WEAPON_STATE::kDrawn;
-                    }
+                if (a_eventName == "WeapOutRightReplaceForceEquip" && Settings::IsQuickSwapAllowed(actor) &&
+                    !MagicEquip(actor)) {
                     actor->OnItemEquipped(false);
                     MoveWeaponToHand(actor);
                     suppressNextPlayerAttackStop = Settings::IsNonCancelAttackAllowed(actor);

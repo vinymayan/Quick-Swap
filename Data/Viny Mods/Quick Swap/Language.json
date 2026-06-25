@@ -1,0 +1,15 @@
+{
+  "menu": {
+    "section": "Viny Mods",
+    "quick_swap_settings": "Quick Swap Settings",
+    "quick_swap_header": "Quick Swap",
+    "enable_quick_swap": "Enable Quick Swap",
+    "quick_swap_perk": "Quick Swap locked behind perk",
+    "non_cancel_attack_header": "Non Cancel Attack",
+    "enable_non_cancel_attack": "Enable Non Cancel Attack",
+    "non_cancel_attack_perk": "Non Cancel Attack locked behind perk"
+  },
+  "common": {
+    "none": "None"
+  }
+}
