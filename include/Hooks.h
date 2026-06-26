@@ -63,7 +63,7 @@ private:
 
     static bool IsMagicEquippedObject(RE::TESForm* a_form)
     {
-        return a_form && a_form->GetFormType() == RE::FormType::Spell;
+        return a_form && (a_form->GetFormType() == RE::FormType::Spell || a_form->GetFormType() == RE::FormType::Scroll);
     }
 
     static bool NotifyAnimationGraph_REFR(RE::IAnimationGraphManagerHolder* a_this, const RE::BSFixedString& a_eventName)
