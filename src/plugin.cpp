@@ -1,17 +1,17 @@
 ﻿#include "logger.h"
+#include "Events.h"
 #include "Hooks.h"
 #include "Manager.h"
 #include "Settings.h"
 
 void OnMessage(SKSE::MessagingInterface::Message* message)
 {
-    if (message->type == SKSE::MessagingInterface::kPostLoad) {
-        
-    }
     if (message->type == SKSE::MessagingInterface::kDataLoaded) {
+        PlayerMagicEquipTracker::Install();
         QuickSwapMenu::Register();
     }
     if (message->type == SKSE::MessagingInterface::kNewGame || message->type == SKSE::MessagingInterface::kPostLoadGame) {
+        PlayerMagicEquipTracker::Refresh();
         Manager::GetSingleton()->PopulateAllLists();
     }
 }

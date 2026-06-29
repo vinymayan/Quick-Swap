@@ -6,6 +6,8 @@
 #include "rapidjson/prettywriter.h"
 #include "rapidjson/stringbuffer.h"
 
+#include <algorithm>
+#include <cctype>
 #include <filesystem>
 #include <fstream>
 #include <map>
@@ -122,35 +124,100 @@ namespace
         return perk && a_actor && a_actor->HasPerk(perk);
     }
 
-    bool DrawPerkDropdown(const char* a_label, RE::FormID& a_currentPerk)
+    std::string ToLower(std::string a_value)
+    {
+        std::transform(a_value.begin(), a_value.end(), a_value.begin(), [](unsigned char c) {
+            return static_cast<char>(std::tolower(c));
+        });
+        return a_value;
+    }
+
+    bool DrawPerkDropdown(const char* a_label, RE::FormID& a_currentPerk, float a_customWidth = -1.0f)
     {
         const auto& perks = Manager::GetSingleton()->GetList("Perk");
+        if (perks.empty()) {
+            ImGui::TextDisabled("%s: %s", a_label, Settings::GetLoc("menu.form_list_empty", "No forms loaded"));
+            return false;
+        }
+
         bool changed = false;
-        int currentIndex = 0;
+        int localSelection = 0;
 
         std::vector<const char*> items;
+        std::vector<int> mapToFull;
         items.reserve(perks.size() + 1);
+        mapToFull.reserve(perks.size() + 1);
         items.push_back(Settings::GetLoc("common.none", "None"));
+        mapToFull.push_back(-1);
 
         for (std::size_t i = 0; i < perks.size(); ++i) {
             items.push_back(perks[i].cachedDisplayName.c_str());
+            mapToFull.push_back(static_cast<int>(i));
             if (perks[i].formID == a_currentPerk) {
-                currentIndex = static_cast<int>(i + 1);
+                localSelection = static_cast<int>(i + 1);
             }
         }
 
-        if (ImGui::Combo(a_label, &currentIndex, items.data(), static_cast<int>(items.size()))) {
-            a_currentPerk = currentIndex == 0 ? 0 : perks[static_cast<std::size_t>(currentIndex - 1)].formID;
-            changed = true;
+        ImGui::PushID(a_label);
+        std::string displayLabel = a_label;
+        if (const auto hashPos = displayLabel.find("##"); hashPos != std::string::npos) {
+            displayLabel = displayLabel.substr(0, hashPos);
         }
 
+        ImGui::Text("%s:", displayLabel.c_str());
+        ImGui::SameLine();
+        if (a_customWidth > 0.0f) {
+            ImGui::SetNextItemWidth(a_customWidth);
+        }
+
+        if (a_customWidth > 0.0f) {
+            ImGui::SetNextWindowSize({ a_customWidth, 0.0f });
+        }
+
+        if (ImGui::BeginCombo("##drop", items[localSelection])) {
+            static std::map<std::string, std::string> searchBuffers;
+            char searchBuf[256]{};
+            if (const auto it = searchBuffers.find(a_label); it != searchBuffers.end()) {
+                strcpy_s(searchBuf, it->second.c_str());
+            }
+
+            ImGui::SetNextItemWidth(-1.0f);
+            const std::string searchLabel = std::string(Settings::GetLoc("common.search_placeholder", "Filter...")) + "##filter";
+            if (ImGui::InputText(searchLabel.c_str(), searchBuf, sizeof(searchBuf))) {
+                searchBuffers[a_label] = searchBuf;
+            }
+            ImGui::Separator();
+
+            const auto search = ToLower(searchBuf);
+            ImGui::BeginChild("##scroll", { 0, 200 }, false);
+            for (int i = 0; i < static_cast<int>(items.size()); ++i) {
+                if (!search.empty() && ToLower(items[i]).find(search) == std::string::npos) {
+                    continue;
+                }
+
+                const bool selected = localSelection == i;
+                if (ImGui::Selectable(items[i], selected)) {
+                    const int originalIndex = mapToFull[i];
+                    a_currentPerk = originalIndex < 0 ? 0 : perks[static_cast<std::size_t>(originalIndex)].formID;
+                    searchBuffers[a_label].clear();
+                    changed = true;
+                }
+                if (selected) {
+                    ImGui::SetItemDefaultFocus();
+                }
+            }
+            ImGui::EndChild();
+            ImGui::EndCombo();
+        }
+
+        ImGui::PopID();
         return changed;
     }
 
     void EnsureMenuListsPopulated()
     {
         auto* manager = Manager::GetSingleton();
-        if (!manager->IsPopulated()) {
+        if (!manager->_isPopulated) {
             manager->PopulateAllLists();
         }
     }
@@ -254,7 +321,8 @@ namespace QuickSwapMenu
         changed |= ImGui::Checkbox(Settings::GetLoc("menu.enable_quick_swap", "Enable Quick Swap"), &Settings::EnableQuickSwap);
         changed |= DrawPerkDropdown(
             Settings::GetLoc("menu.quick_swap_perk", "Quick Swap locked behind perk"),
-            Settings::QuickSwapPerk);
+            Settings::QuickSwapPerk,
+            300.0f);
 
         ImGui::Separator();
         ImGui::Text("%s", Settings::GetLoc("menu.non_cancel_attack_header", "Non Cancel Attack"));
@@ -263,7 +331,8 @@ namespace QuickSwapMenu
             &Settings::EnableNonCancelAttack);
         changed |= DrawPerkDropdown(
             Settings::GetLoc("menu.non_cancel_attack_perk", "Non Cancel Attack locked behind perk"),
-            Settings::NonCancelAttackPerk);
+            Settings::NonCancelAttackPerk,
+            300.0f);
 
         if (changed) {
             Settings::SaveSettings();

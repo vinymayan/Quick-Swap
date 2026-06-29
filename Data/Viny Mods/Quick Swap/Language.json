@@ -7,9 +7,11 @@
     "quick_swap_perk": "Quick Swap locked behind perk",
     "non_cancel_attack_header": "Non Cancel Attack",
     "enable_non_cancel_attack": "Enable Non Cancel Attack",
-    "non_cancel_attack_perk": "Non Cancel Attack locked behind perk"
+    "non_cancel_attack_perk": "Non Cancel Attack locked behind perk",
+    "form_list_empty": "No forms loaded"
   },
   "common": {
-    "none": "None"
+    "none": "None",
+    "search_placeholder": "Filter..."
   }
 }
