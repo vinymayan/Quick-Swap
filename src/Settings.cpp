@@ -1,6 +1,7 @@
 ﻿#include "Settings.h"
 
 #include "Manager.h"
+#include "Hooks.h"
 #include "SKSEMCP/SKSEMenuFramework.hpp"
 #include "rapidjson/document.h"
 #include "rapidjson/prettywriter.h"
@@ -331,6 +332,9 @@ namespace QuickSwapMenu
             300.0f);
 
         if (changed) {
+            if (!Settings::IsQuickSwapAllowed(RE::PlayerCharacter::GetSingleton())) {
+                NotifyAnimationGraphHook::ResetState();
+            }
             Settings::SaveSettings();
         }
     }

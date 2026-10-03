@@ -1,4 +1,5 @@
 #include "Events.h"
+#include "Hooks.h"
 
 PlayerMagicEquipTracker* PlayerMagicEquipTracker::GetSingleton()
 {
@@ -10,7 +11,6 @@ void PlayerMagicEquipTracker::Install()
 {
     auto* singleton = GetSingleton();
     if (singleton->_installed) {
-        logger::info("[QuickSwap][EquipSink] Install skipped: already installed");
         return;
     }
 
@@ -18,7 +18,6 @@ void PlayerMagicEquipTracker::Install()
         holder->AddEventSink<RE::TESEquipEvent>(singleton);
         singleton->_installed = true;
         Refresh();
-        logger::info("[QuickSwap][EquipSink] Installed. initialTracked={}", singleton->_playerHasMagicEquipped);
     } else {
         logger::warn("[QuickSwap][EquipSink] Install failed: ScriptEventSourceHolder is null");
     }
@@ -27,13 +26,8 @@ void PlayerMagicEquipTracker::Install()
 void PlayerMagicEquipTracker::Refresh()
 {
     auto* singleton = GetSingleton();
-    const bool before = singleton->_playerHasMagicEquipped;
     singleton->_playerHasMagicEquipped = ActorHasMagicEquipped(RE::PlayerCharacter::GetSingleton());
     singleton->_recentMagicUnequip = false;
-    logger::info(
-        "[QuickSwap][EquipSink] Refresh trackedBefore={} trackedAfter={}",
-        before,
-        singleton->_playerHasMagicEquipped);
 }
 
 bool PlayerMagicEquipTracker::HasMagicEquipped()
@@ -70,17 +64,17 @@ RE::BSEventNotifyControl PlayerMagicEquipTracker::ProcessEvent(
     auto* form = RE::TESForm::LookupByID(a_event->baseObject);
     const bool isMagicForm = IsMagicForm(form);
 
-    if (!isMagicForm) {
-        return RE::BSEventNotifyControl::kContinue;
+    if (isMagicForm) {
+        if (a_event->equipped) {
+            _playerHasMagicEquipped = true;
+            _recentMagicUnequip = false;
+        } else {
+            _playerHasMagicEquipped = ActorHasMagicEquipped(actor);
+            _recentMagicUnequip = true;
+        }
     }
 
-    if (a_event->equipped) {
-        _playerHasMagicEquipped = true;
-        _recentMagicUnequip = false;
-    } else {
-        _playerHasMagicEquipped = ActorHasMagicEquipped(actor);
-        _recentMagicUnequip = true;
-    }
+    NotifyAnimationGraphHook::NotifyEquipEvent(actor, form, a_event->equipped);
 
     return RE::BSEventNotifyControl::kContinue;
 }
