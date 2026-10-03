@@ -8,6 +8,7 @@ public:
     static void Install();
     static void Refresh();
     static bool HasMagicEquipped();
+    static bool HasRecentMagicUnequip();
     static bool ConsumeRecentMagicUnequip();
 
     RE::BSEventNotifyControl ProcessEvent(

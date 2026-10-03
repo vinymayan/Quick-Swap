@@ -49,6 +49,11 @@ bool PlayerMagicEquipTracker::ConsumeRecentMagicUnequip()
     return result;
 }
 
+bool PlayerMagicEquipTracker::HasRecentMagicUnequip()
+{
+    return GetSingleton()->_recentMagicUnequip;
+}
+
 RE::BSEventNotifyControl PlayerMagicEquipTracker::ProcessEvent(
     const RE::TESEquipEvent* a_event,
     RE::BSTEventSource<RE::TESEquipEvent>*)

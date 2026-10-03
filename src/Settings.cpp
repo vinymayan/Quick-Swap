@@ -216,10 +216,6 @@ namespace
 
     void EnsureMenuListsPopulated()
     {
-        auto* manager = Manager::GetSingleton();
-        if (!manager->_isPopulated) {
-            manager->PopulateAllLists();
-        }
     }
 }
 

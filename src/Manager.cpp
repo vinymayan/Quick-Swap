@@ -41,7 +41,6 @@ namespace FormUtil {
         return std::format("{}|{:X}", file->GetFilename(), localID);
     }
 
-    // Função auxiliar para reverter string para FormID no load do JSON
     RE::FormID FormIDFromString(const std::string& str) {
         auto pos = str.find('|');
         if (pos != std::string::npos) {
@@ -58,7 +57,7 @@ namespace FormUtil {
 void Manager::PopulateAllLists() {
     if (_isPopulated) return;
 
-    logger::info("Iniciando escaneamento de FormTypes...");
+    logger::debug("Iniciando escaneamento de FormTypes...");
 
     PopulateList<RE::BGSPerk>("Perk");
     PopulateList<RE::TESGlobal>("Global", [](RE::TESGlobal* glob) -> bool {
@@ -69,6 +68,32 @@ void Manager::PopulateAllLists() {
         if (cb) cb();
     }
     _readyCallbacks.clear();
+}
+
+void Manager::RefreshLists(std::string_view a_signatures) {
+    const auto includes = [a_signatures](std::string_view a_signature) {
+        std::size_t begin = 0;
+        while (begin <= a_signatures.size()) {
+            const auto end = a_signatures.find(',', begin);
+            auto token = a_signatures.substr(begin, end == std::string_view::npos ? a_signatures.size() - begin : end - begin);
+            while (!token.empty() && token.front() == ' ') token.remove_prefix(1);
+            while (!token.empty() && token.back() == ' ') token.remove_suffix(1);
+            if (token == a_signature) return true;
+            if (end == std::string_view::npos) break;
+            begin = end + 1;
+        }
+        return false;
+    };
+
+    if (a_signatures.empty() || includes("All")) {
+        _isPopulated = false;
+        PopulateAllLists();
+        return;
+    }
+    if (includes("PERK")) PopulateList<RE::BGSPerk>("Perk");
+    if (includes("GLOB")) {
+        PopulateList<RE::TESGlobal>("Global", [](RE::TESGlobal* glob) { return glob != nullptr; });
+    }
 }
 
 const std::vector<InternalFormInfo>& Manager::GetList(const std::string& typeName) {
@@ -93,15 +118,11 @@ void Manager::RegisterReadyCallback(std::function<void()> callback) {
 std::string Manager::ToUTF8(std::string_view a_str) {
     if (a_str.empty()) return "";
 
-    // 1. Testa se a string já é um UTF-8 válido
     int u8Test = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, a_str.data(), static_cast<int>(a_str.size()), nullptr, 0);
     if (u8Test > 0) {
-        // É UTF-8 válido (Skyrim SE nativo), retorna sem corromper
         return std::string(a_str);
     }
 
-    // 2. Se falhou, a string é ANSI (Mod antigo ou locale específico do Windows).
-    // Precisamos converter de ANSI (CP_ACP) para UTF-16, e depois para UTF-8.
     int wlen = MultiByteToWideChar(CP_ACP, 0, a_str.data(), static_cast<int>(a_str.size()), nullptr, 0);
     if (wlen <= 0) return std::string(a_str);
 
@@ -138,14 +159,12 @@ void Manager::PopulateList(const std::string& a_typeName, std::function<bool(T*)
         if (a_filter && !a_filter(form)) {
             continue;
         }
-        // Variáveis de auxílio para o log de erro caso o catch seja acionado
         RE::FormID currentID = 0;
         std::string currentPlugin = "Unknown";
 
         try {
             currentID = form->GetFormID();
 
-            // Obtém o nome do plugin de origem antes de qualquer processamento complexo
             if (auto file = form->GetFile(0)) {
                 currentPlugin = std::string(file->GetFilename());
             }
@@ -158,7 +177,6 @@ void Manager::PopulateList(const std::string& a_typeName, std::function<bool(T*)
             info.formType = a_typeName;
             info.pluginName = ToUTF8(currentPlugin);
 
-            // EditorID: clib_util pode lançar exceções em contextos raros de memória
             std::string rawEditorID = clib_util::editorID::get_editorID(form);
             info.editorID = ToUTF8(rawEditorID);
 
@@ -172,23 +190,20 @@ void Manager::PopulateList(const std::string& a_typeName, std::function<bool(T*)
                 rawName = fullName->fullName.c_str();
             }
 
-            // A conversão UTF-8 é um ponto comum de falha se a string estiver corrompida
             info.name = ToUTF8(rawName);
             info.UpdateDisplayName();
             list.push_back(info);
         }
         catch (const std::exception& e) {
-            // Log detalhado com FormID em Hexadecimal e o erro específico
             logger::error("[PopulateList] Critical error on item {:08X} of plugin '{}' (Type: {}). Error: {}",
                 currentID, currentPlugin, a_typeName, e.what());
         }
         catch (...) {
-            // Captura erros desconhecidos que não herdam de std::exception
             logger::error("[PopulateList] Uknown error on item {:08X} of plugin '{}' (Type: {})",
                 currentID, currentPlugin, a_typeName);
         }
     }
-    logger::info("Carregados {} itens do tipo {}", list.size(), a_typeName);
+    logger::debug("Carregados {} itens do tipo {}", list.size(), a_typeName);
 }
 
 

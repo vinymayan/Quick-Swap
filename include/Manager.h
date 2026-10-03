@@ -26,7 +26,6 @@ struct InternalFormInfo {
         std::string base = !name.empty() ? name : (!editorID.empty() ? editorID : "Unknown");
         cachedDisplayName = std::format("{} [{:08X}]", base, formID);
     }
-    // Helper for UI
     std::string GetDisplayName() const {
         if (!name.empty()) return name;
         if (!editorID.empty()) return editorID;
@@ -46,12 +45,10 @@ public:
     bool IsNPCAffected(RE::FormID baseID);
 
     void PopulateAllLists();
+    void RefreshLists(std::string_view a_signatures);
     static std::string ToUTF8(std::string_view a_str);
-    // Data Store: Map of "TypeName" -> List of InternalFormInfo
-    // We use this to feed the UI
     const std::vector<InternalFormInfo>& GetList(const std::string& typeName);
 
-    // Register callback for when population is done
     void RegisterReadyCallback(std::function<void()> callback);
     bool _isPopulated = false;
 private:
